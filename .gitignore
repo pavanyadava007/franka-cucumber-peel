@@ -13,3 +13,4 @@ models/menagerie/
 wandb/
 # per-process temp model files
 models/menagerie/franka_emika_panda/_panda_ft_*.xml
+scripts/dev/upload_release_*.sh
