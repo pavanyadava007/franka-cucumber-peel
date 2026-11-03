@@ -15,7 +15,10 @@ import torch
 
 
 def epochs_done(path: Path) -> int:
-    payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False, mmap=True)
+    try:  # mmap reads only the header; fall back to a full read if the filesystem cannot map files
+        payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False, mmap=True)
+    except Exception:
+        payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False)
     return dill.loads(payload["pickles"]["epoch"]) + 1  # saved before the epoch counter is increased
 
 
