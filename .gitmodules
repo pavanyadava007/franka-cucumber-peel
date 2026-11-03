@@ -1,0 +1,6 @@
+[submodule "third_party/rdp"]
+	path = third_party/rdp
+	url = https://github.com/xiaoxiaoxh/reactive_diffusion_policy.git
+[submodule "third_party/gello"]
+	path = third_party/gello
+	url = https://github.com/wuphilipp/gello_software.git

@@ -1,0 +1,16 @@
+[project]
+name = "franka-cucumber-peel"
+version = "0.1.0"
+description = "Bimanual Franka Panda cucumber peeling: MuJoCo simulation, GELLO teleoperation path, RDP policies"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["third_party", "data", "runs", "tools", "scripts/dev"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E402", "E731", "B905"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

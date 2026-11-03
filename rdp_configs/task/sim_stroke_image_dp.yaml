@@ -1,0 +1,33 @@
+# Baseline: plain Diffusion Policy, cameras + tcp pose, NO force/torque input. Same data and action space as RDP.
+name: sim_stroke_image_dp
+image_shape: [3, 96, 128]
+dataset_path: data/rdp/peel_stroke_zarr
+
+shape_meta: &shape_meta
+  obs:
+    external_img:
+      shape: ${task.image_shape}
+      type: rgb
+    right_wrist_img:
+      shape: ${task.image_shape}
+      type: rgb
+    right_robot_tcp_pose:
+      shape: [9]
+      type: low_dim
+  action:
+    shape: [10]
+
+dataset:
+  _target_: reactive_diffusion_policy.dataset.real_image_tactile_dataset.RealImageTactileDataset
+  shape_meta: *shape_meta
+  dataset_path: ${task.dataset_path}
+  horizon: ${horizon}
+  pad_before: ${eval:'${dataset_obs_steps}-1+${n_latency_steps}'}
+  pad_after: ${eval:'${n_action_steps}-1'}
+  n_obs_steps: ${dataset_obs_steps}
+  n_latency_steps: ${n_latency_steps}
+  seed: 42
+  val_ratio: 0.05
+  max_train_episodes: null
+  delta_action: False
+  relative_action: True

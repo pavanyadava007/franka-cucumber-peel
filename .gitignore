@@ -1,0 +1,15 @@
+# environment and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# large or regenerable artifacts (trained checkpoints and raw demos are attached to GitHub Releases)
+data/
+runs/
+models/menagerie/
+*.ckpt
+*.zarr/
+wandb/
+# per-process temp model files
+models/menagerie/franka_emika_panda/_panda_ft_*.xml
