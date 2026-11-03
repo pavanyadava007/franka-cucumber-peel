@@ -23,7 +23,12 @@ a = ap.parse_args()
 name = f"expert_{'noforce' if a.noforce else 'force'}_{a.geometry}geom_{a.shape_class or 'any'}_seed{a.seed}.mp4"
 out = Path(a.out or ROOT / "media" / "videos" / name)
 m, _, ep, cfg = run_expert_episode(
-    a.seed, use_force=not a.noforce, render_obs=False, record=False, video=out, shape_class=a.shape_class,
+    a.seed,
+    use_force=not a.noforce,
+    render_obs=False,
+    record=False,
+    video=out,
+    shape_class=a.shape_class,
     geometry=a.geometry,
 )
 print(json.dumps({"video": str(out), **{k: (round(v, 3) if isinstance(v, float) else v) for k, v in m.items()}}))

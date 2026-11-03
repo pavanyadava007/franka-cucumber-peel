@@ -1,4 +1,5 @@
 """Stand-in for rclpy.clock (unused offline)."""
+
 import enum
 
 

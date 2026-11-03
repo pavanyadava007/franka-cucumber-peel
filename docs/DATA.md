@@ -41,6 +41,24 @@ One `.npz` per episode in `data/raw/`, with RDP key names:
 
 `collect_log.jsonl` has one line per episode with the cucumber shape, physics parameters and outcome.
 
+### The two demo sets
+
+| Set | Folder | Seeds | Cucumber classes | Episodes | Successful (used) |
+|---|---|---|---|---|---|
+| v1 first shapes | `data/raw` | 2002 to 2085 | mini, standard, long, thick, tapered, curved, mixed | 84 | 78 |
+| v2 real cucumber types | `data/raw_v2` | 3003 to 3065 | pickling, persian, slicing, english, crooked, necked, realistic | 63 | 57 |
+
+The class of an episode is `seed % 7` in the class list of its set, so every class gets the same number of seeds.
+Seeds for training (2000s, 3000s) and testing (9000+, 10000+) never overlap.
+
+The first v2 pass showed that the expert left skin on short cucumbers (pickling coverage 66 to 85 %): it started
+the stroke too close to the gripper end, stopped too early at the tip (the blade removes skin a few mm behind its
+edge), and repeated gap-fill strokes that removed nothing. After fixing that (start 3 mm earlier, run 8 mm past the
+tip, stop gap filling when two strokes in a row gain less than 0.5 %), the failed seeds were collected again. A
+re-collected seed overwrites its episode file; `collect_log.jsonl` keeps both lines and the last one is the one
+used. After the fix, pickling went to 9/9. The expert still fails on 3 of 9 crooked (Class II) cucumbers, mostly
+from force spikes on the strong bend; those episodes are left out of training, not patched.
+
 ## 3. Turning it into RDP training data
 
 `scripts/make_rdp_dataset.py` writes `replay_buffer.zarr` with `data/<key>` and `meta/episode_ends`, the layout

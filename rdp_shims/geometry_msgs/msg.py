@@ -1,4 +1,5 @@
 """Stand-in for geometry_msgs.msg (RDP imports Pose only as a type hint for ROS conversion helpers)."""
+
 from dataclasses import dataclass, field
 
 

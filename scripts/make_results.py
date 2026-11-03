@@ -60,7 +60,8 @@ def data_summary(out, raw_dir, label, classes, zarr_name):
     log = ROOT / "data" / raw_dir / "collect_log.jsonl"
     if not log.exists():
         return
-    rows = [json.loads(x) for x in log.read_text().splitlines() if x.strip()]
+    # a seed collected again (after a fix) overwrites its episode file, so the last log row per seed is the one used
+    rows = list({r["seed"]: r for r in (json.loads(x) for x in log.read_text().splitlines() if x.strip())}.values())
     ok = [r for r in rows if r["success"]]
     out.append(
         f"- {label}: {len(rows)} scripted-expert episodes through the GELLO joint path, {len(ok)} successful and "
