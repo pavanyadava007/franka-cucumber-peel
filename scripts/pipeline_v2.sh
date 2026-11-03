@@ -6,12 +6,13 @@
 #      RAM would push the 12 GB VM into swap)
 #   3. RDP is evaluated while DP trains; then DP is evaluated (v2 held-out seeds 10000+, 5 per class, one video each)
 #   4. docs/RESULTS.md
-# Large outputs (dataset, checkpoints) go to $BIG, linked into data/ and runs/. On this PC the WSL disk lives on a
-# nearly full C: drive, and growing it by several GB crashed the VM twice, so $BIG is on D:.
+# Large outputs (dataset ~5 GB, checkpoints ~6 GB) go to $BIG, linked into data/ and runs/. Under WSL the Linux disk
+# grows on the Windows drive that holds it; if that drive is short of space, point BIG at another drive, e.g.
+# BIG=/mnt/d/franka-cucumber-peel-big (slower: the dataset is ~200k small files). check_space stops before a crash.
 set -e
 P="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$P"
-BIG="${BIG:-/mnt/d/franka-cucumber-peel-big}"
+BIG="${BIG:-$P/data/big}"
 mkdir -p "$BIG/runs"
 
 check_space() {  # stop cleanly instead of crashing the VM when the Windows drive under the WSL disk is full
