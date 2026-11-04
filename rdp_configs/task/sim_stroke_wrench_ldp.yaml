@@ -25,7 +25,7 @@ shape_meta: &shape_meta
     shape: [10]
 
 dataset:
-  _target_: reactive_diffusion_policy.dataset.real_image_tactile_latent_diffusion_dataset.RealImageTactileLatentDiffusionDataset
+  _target_: peel_lazy_datasets.RealImageTactileLatentDiffusionDatasetImagesOnDisk  # RDP class, images read from disk
   shape_meta: *shape_meta
   dataset_path: ${task.dataset_path}
   horizon: ${horizon}
