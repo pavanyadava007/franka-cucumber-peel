@@ -14,12 +14,19 @@ import dill
 import torch
 
 
+STEPS_PER_EPOCH = 1000  # training.max_train_steps in scripts/train_rdp.sh
+
+
 def epochs_done(path: Path) -> int:
     try:  # mmap reads only the header; fall back to a full read if the filesystem cannot map files
         payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False, mmap=True)
     except Exception:
         payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False)
-    return dill.loads(payload["pickles"]["epoch"]) + 1  # saved before the epoch counter is increased
+    pk = payload["pickles"]
+    # the step counter is exact; the epoch label repeats once after every resume (saved before it is increased)
+    if "global_step" in pk:
+        return round(dill.loads(pk["global_step"]) / STEPS_PER_EPOCH)
+    return dill.loads(pk["epoch"]) + 1
 
 
 def main():
