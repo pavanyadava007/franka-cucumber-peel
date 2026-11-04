@@ -85,5 +85,10 @@ Paired comparisons on the same cucumbers (exact McNemar test on success):
 
 ## Failed first attempt: fine-tuning RDP stage 2 on v1 + v2
 
-The v1 RDP stage 2 was first fine-tuned for 8 epochs on v1 + v2, keeping the v1 tokenizer (stage 1). On 13 v2 test cucumbers it succeeded 0 times and touched the cucumber in 0 of them: the peeler swung far past the stroke. Cause: the fine-tune refitted the action normalizer to v1 + v2, where the stroke motion in the tool frame spans 2 to 6 times the v1 range (the tool turns with bent cucumbers), while the tokenizer, fixed after stage 1, had learned the v1-normalized actions. RDP's recipe trains both stages on the same data, so the v2 RDP above has both stages trained from scratch on v1 + v2, like the DP baseline.
+The v1 RDP stage 2 was first fine-tuned for 8 epochs on v1 + v2, keeping the v1 tokenizer (stage 1). On 13 v2 test cucumbers it succeeded 0 times and touched the cucumber in 0 of them: the peeler moved and turned far from the cucumber. Most likely cause: the fine-tune refitted the action normalizer to v1 + v2, whose relative motion range in the tool frame is much wider than in v1, while the tokenizer, fixed after stage 1, had learned the v1-normalized actions. RDP's recipe trains both stages on the same data, so the v2 RDP above has both stages trained from scratch on v1 + v2, like the DP baseline.
+
+Diagnostic episodes (`scripts/dev/diag_episode.py`):
+
+- `runs/rdp_ldp/checkpoints/latest.ckpt` on pickling seed 10000: coverage 74 %, blade contact in 1832 control steps.
+- `data/big/runs/rdp_ldp_v2_finetune_failed/checkpoints/latest.ckpt` on standard seed 9100: coverage 0 %, blade contact in 0 control steps.
 

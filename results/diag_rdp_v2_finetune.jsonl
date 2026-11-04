@@ -1,0 +1,2 @@
+{"ckpt": "runs/rdp_ldp/checkpoints/latest.ckpt", "seed": 10000, "shape_class": "pickling", "coverage": 0.73989898989899, "gouge": 0.0, "contact_steps": 1832.0, "cut_steps": 1098.0, "strokes": 10.0, "success": false, "wall_s": 259.8}
+{"ckpt": "data/big/runs/rdp_ldp_v2_finetune_failed/checkpoints/latest.ckpt", "seed": 9100, "shape_class": "standard", "coverage": 0.0, "gouge": 0.0, "contact_steps": 0.0, "cut_steps": 0.0, "strokes": 12.0, "success": false, "wall_s": 372.8}
