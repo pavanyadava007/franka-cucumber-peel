@@ -145,6 +145,34 @@ def section(out, title, classes, suffix, note):
     out.append("")
 
 
+def finetune_note(out):
+    """The failed first attempt at v2 RDP (stage 2 fine-tuned on v1 + v2), with the diagnostics that explain it."""
+    rs = load("rdp", "_v2_finetune_failed")
+    if not rs:
+        return
+    k = sum(r["success"] for r in rs)
+    touched = sum(r["contact_steps"] > 0 for r in rs)
+    out += [
+        "## Failed first attempt: fine-tuning RDP stage 2 on v1 + v2",
+        "",
+        f"The v1 RDP stage 2 was first fine-tuned for 8 epochs on v1 + v2, keeping the v1 tokenizer (stage 1). On "
+        f"{len(rs)} v2 test cucumbers it succeeded {k} times and touched the cucumber in {touched} of them: the "
+        "peeler moved and turned far from the cucumber. Most likely cause: the fine-tune refitted the action "
+        "normalizer to v1 + v2, whose relative motion range in the tool frame is much wider than in v1, while the "
+        "tokenizer, fixed after stage 1, had learned the v1-normalized actions. RDP's recipe trains both stages on "
+        "the same data, so the v2 RDP above has both stages trained from scratch on v1 + v2, like the DP baseline.",
+    ]
+    diag = ROOT / "results" / "diag_rdp_v2_finetune.jsonl"
+    if diag.exists():
+        out += ["", "Diagnostic episodes (`scripts/dev/diag_episode.py`):", ""]
+        for r in (json.loads(x) for x in diag.read_text().splitlines() if x.strip()):
+            out.append(
+                f"- `{r['ckpt']}` on {r['shape_class']} seed {r['seed']}: coverage {100 * r['coverage']:.0f} %, "
+                f"blade contact in {r['contact_steps']:.0f} control steps."
+            )
+    out.append("")
+
+
 def main():
     out = [
         "# Results",
@@ -177,6 +205,7 @@ def main():
         "_v2",
         "Policies here were trained on v1 + v2 demos unless the method name says otherwise.",
     )
+    finetune_note(out)
     (ROOT / "docs" / "RESULTS.md").write_text("\n".join(out) + "\n")
     print("\n".join(out))
 

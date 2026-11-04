@@ -3,8 +3,9 @@
 # baseline on the simulated stroke dataset, with the official RDP code in third_party/rdp (unmodified).
 # Sized for a 4 GB GTX 1650: UNet widths 256/512/1024, 96x128 images, batch 32 (LDP/DP), fixed step budgets.
 #   bash scripts/train_rdp.sh at|ldp|ldp_ft|dp|all
-# ldp_ft and dp resume after a reboot: RDP's trainer runs training.num_epochs MORE epochs on every resume, so they
-# pass only the epochs still missing (scripts/ckpt_epochs.py reads the checkpoint, repairs a cut-off one).
+# at, ldp, ldp_ft and dp resume after a reboot: RDP's trainer runs training.num_epochs MORE epochs on every resume, so
+# they pass only the epochs still missing (scripts/ckpt_epochs.py reads the checkpoint, repairs a cut-off one).
+# Output folders: AT_RUN, LDP_RUN, DP_RUN (default runs/rdp_at, runs/rdp_ldp, runs/dp, the v1 runs).
 set -eo pipefail
 P="$(cd "$(dirname "$0")/.." && pwd)"
 DATA="${DATA:-$P/data/rdp/peel_stroke_zarr}"
@@ -14,22 +15,31 @@ cd "$P/third_party/rdp"
 COMMON=("hydra.searchpath=[file://$P/rdp_configs]" "task.dataset_path=$DATA" logging.mode=offline
         dataloader.num_workers=${NW:-5} val_dataloader.num_workers=2 training.val_every=5)
 stage="${1:-all}"
-epochs_left() {  # checkpoints_dir total -> epochs still to train
-  local done; done=$($PY "$P/scripts/ckpt_epochs.py" "$1"); echo $(( $2 - done ))
+epochs_left() {  # checkpoints_dir total [steps_per_epoch] -> epochs still to train
+  local done; done=$($PY "$P/scripts/ckpt_epochs.py" "$1" ${3:-1000}); echo $(( $2 - done ))
 }
+ATR="${AT_RUN:-$P/runs/rdp_at}"
 
 if [ "$stage" = at ] || [ "$stage" = all ]; then
-  $PY train.py --config-name=train_at_workspace task=sim_stroke_wrench_at at=at_peel "${COMMON[@]}" \
-    training.num_epochs=40 training.max_train_steps=200 training.checkpoint_every=10 \
-    hydra.run.dir="$P/runs/rdp_at" 2>&1 | tr '\r' '\n' | grep --line-buffered -v "Calculating\|it/s\]$" > "$P/runs/rdp_at.log"
+  mkdir -p "$ATR/checkpoints"
+  LEFT=$(epochs_left "$ATR/checkpoints" 40 200); echo "at: $LEFT epochs left of 40"
+  if [ "$LEFT" -gt 0 ]; then
+    $PY train.py --config-name=train_at_workspace task=sim_stroke_wrench_at at=at_peel "${COMMON[@]}" \
+      training.num_epochs=$LEFT training.max_train_steps=200 training.checkpoint_every=1 \
+      hydra.run.dir="$ATR" 2>&1 | tr '\r' '\n' | grep --line-buffered -v "Calculating\|it/s\]$" >> "$ATR.log"
+  fi
 fi
 if [ "$stage" = ldp ] || [ "$stage" = all ]; then
-  $PY train.py --config-name=train_latent_diffusion_unet_real_image_workspace task=sim_stroke_wrench_ldp at=at_peel \
-    at_load_dir="$P/runs/rdp_at/checkpoints/latest.ckpt" "${COMMON[@]}" \
-    "policy.down_dims=[256,512,1024]" "policy.obs_encoder.resize_shape=[96,128]" \
-    dataloader.batch_size=32 val_dataloader.batch_size=32 training.sample_every=1000 \
-    training.num_epochs=20 training.max_train_steps=1000 training.checkpoint_every=5 \
-    hydra.run.dir="$P/runs/rdp_ldp" 2>&1 | tr '\r' '\n' | grep --line-buffered -v "Calculating\|it/s\]$" > "$P/runs/rdp_ldp.log"
+  LDR="${LDP_RUN:-$P/runs/rdp_ldp}"; mkdir -p "$LDR/checkpoints"
+  LEFT=$(epochs_left "$LDR/checkpoints" 20); echo "ldp: $LEFT epochs left of 20"
+  if [ "$LEFT" -gt 0 ]; then
+    $PY train.py --config-name=train_latent_diffusion_unet_real_image_workspace task=sim_stroke_wrench_ldp at=at_peel \
+      at_load_dir="$ATR/checkpoints/latest.ckpt" "${COMMON[@]}" \
+      "policy.down_dims=[256,512,1024]" "policy.obs_encoder.resize_shape=[96,128]" \
+      dataloader.batch_size=32 val_dataloader.batch_size=32 training.sample_every=1000 \
+      training.num_epochs=$LEFT training.max_train_steps=1000 training.checkpoint_every=1 \
+      hydra.run.dir="$LDR" 2>&1 | tr '\r' '\n' | grep --line-buffered -v "Calculating\|it/s\]$" >> "$LDR.log"
+  fi
 fi
 if [ "$stage" = ldp_ft ]; then
   # fine-tune RDP stage 2 from an existing run on new data: copy the run, then resume it with more epochs
@@ -40,7 +50,7 @@ if [ "$stage" = ldp_ft ]; then
   LEFT=$(epochs_left "$DST/checkpoints" "$EPOCHS"); echo "ldp_ft: $LEFT epochs left of $EPOCHS"
   [ "$LEFT" -gt 0 ] || exit 0
   $PY train.py --config-name=train_latent_diffusion_unet_real_image_workspace task=sim_stroke_wrench_ldp at=at_peel \
-    at_load_dir="$P/runs/rdp_at/checkpoints/latest.ckpt" "${COMMON[@]}" \
+    at_load_dir="$ATR/checkpoints/latest.ckpt" "${COMMON[@]}" \
     "policy.down_dims=[256,512,1024]" "policy.obs_encoder.resize_shape=[96,128]" \
     dataloader.batch_size=32 val_dataloader.batch_size=32 training.sample_every=1000 training.resume=True \
     training.num_epochs=$LEFT training.max_train_steps=1000 training.checkpoint_every=1 \

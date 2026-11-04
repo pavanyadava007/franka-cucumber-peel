@@ -3,7 +3,7 @@
 RDP's trainer re-runs `training.num_epochs` epochs on every resume, so scripts/train_rdp.sh uses this to train only
 the epochs that are left. A reboot while a checkpoint is being written leaves a cut-off latest.ckpt; in that case
 it is replaced by the newest readable top-k checkpoint of the same folder, or removed.
-  python scripts/ckpt_epochs.py runs/dp_v2/checkpoints
+  python scripts/ckpt_epochs.py runs/dp_v2/checkpoints [steps_per_epoch]
 """
 
 import shutil
@@ -13,10 +13,10 @@ from pathlib import Path
 import dill
 import torch
 
-STEPS_PER_EPOCH = 1000  # training.max_train_steps in scripts/train_rdp.sh
+STEPS_PER_EPOCH = 1000  # training.max_train_steps in scripts/train_rdp.sh (200 for the tokenizer stage)
 
 
-def epochs_done(path: Path) -> int:
+def epochs_done(path: Path, steps_per_epoch: int = STEPS_PER_EPOCH) -> int:
     try:  # mmap reads only the header; fall back to a full read if the filesystem cannot map files
         payload = torch.load(path, pickle_module=dill, map_location="cpu", weights_only=False, mmap=True)
     except Exception:
@@ -24,25 +24,26 @@ def epochs_done(path: Path) -> int:
     pk = payload["pickles"]
     # the step counter is exact; the epoch label repeats once after every resume (saved before it is increased)
     if "global_step" in pk:
-        return round(dill.loads(pk["global_step"]) / STEPS_PER_EPOCH)
+        return round(dill.loads(pk["global_step"]) / steps_per_epoch)
     return dill.loads(pk["epoch"]) + 1
 
 
 def main():
     d = Path(sys.argv[1])
+    spe = int(sys.argv[2]) if len(sys.argv) > 2 else STEPS_PER_EPOCH
     latest = d / "latest.ckpt"
     if not latest.exists():
         print(0)
         return
     try:
-        print(epochs_done(latest))
+        print(epochs_done(latest, spe))
         return
     except Exception as e:  # cut-off file
         print(f"latest.ckpt unreadable ({type(e).__name__}), looking for a top-k checkpoint", file=sys.stderr)
     latest.rename(d / "latest.ckpt.broken")
     for cand in sorted(d.glob("epoch=*.ckpt"), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
-            n = epochs_done(cand)
+            n = epochs_done(cand, spe)
         except Exception:
             continue
         shutil.copyfile(cand, latest)

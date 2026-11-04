@@ -42,29 +42,39 @@ def images_on_disk():
         ReplayBuffer.copy_from_path = orig
 
 
+def _normalizer_without_images(ds, fit):
+    """RDP fits the normalizer by reading every sample, images included (relative actions, and the latent actions of
+    stage 2), although only poses, wrenches and actions are used; images get a fixed [0, 1] range. Reading 100k frames
+    from disk takes over an hour, so `fit` runs with the image keys hidden and the image normalizers are added as RDP
+    adds them."""
+    image_keys = set(ds.rgb_keys + ds.extended_rgb_keys)
+    saved = ds.sampler.keys, ds.rgb_keys, ds.extended_rgb_keys
+    ds.sampler.keys = [k for k in ds.sampler.keys if k not in image_keys]
+    ds.rgb_keys, ds.extended_rgb_keys = [], []
+    try:
+        normalizer = fit()
+    finally:
+        ds.sampler.keys, ds.rgb_keys, ds.extended_rgb_keys = saved
+    for key in image_keys:
+        normalizer[key] = get_image_range_normalizer()
+    return normalizer
+
+
 class RealImageTactileDatasetImagesOnDisk(RealImageTactileDataset):
     def __init__(self, *args, **kwargs):
         with images_on_disk():
             super().__init__(*args, **kwargs)
 
     def get_normalizer(self, **kwargs):
-        # With relative actions RDP fits the normalizer by reading every sample, images included, although only the
-        # poses and actions are used (images get a fixed [0, 1] range). Reading 100k frames from disk takes over an
-        # hour, so the pass runs without the image keys; the image normalizers are added as RDP would add them.
-        image_keys = set(self.rgb_keys + self.extended_rgb_keys)
-        saved = self.sampler.keys, self.rgb_keys, self.extended_rgb_keys
-        self.sampler.keys = [k for k in self.sampler.keys if k not in image_keys]
-        self.rgb_keys, self.extended_rgb_keys = [], []
-        try:
-            normalizer = super().get_normalizer(**kwargs)
-        finally:
-            self.sampler.keys, self.rgb_keys, self.extended_rgb_keys = saved
-        for key in image_keys:
-            normalizer[key] = get_image_range_normalizer()
-        return normalizer
+        fit = super().get_normalizer
+        return _normalizer_without_images(self, lambda: fit(**kwargs))
 
 
 class RealImageTactileLatentDiffusionDatasetImagesOnDisk(RealImageTactileLatentDiffusionDataset):
     def __init__(self, *args, **kwargs):
         with images_on_disk():
             super().__init__(*args, **kwargs)
+
+    def get_normalizer(self, **kwargs):
+        fit = super().get_normalizer
+        return _normalizer_without_images(self, lambda: fit(**kwargs))
